@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Lambda inside</title>
+
+		<meta name="description" content="Modern C++ : std::initializer_list">
+		<meta name="author" content="Hanjoung Lee">
+
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css" id="theme">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+
+    <style>
+    .two_columns {
+   display: grid;
+   grid-template-columns: 1fr 1fr;
+   grid-gap: 10px;
+   text-align: left;
+}
+    </style>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section>
+					<h1>Modern C++</h1>
+					<p>lambda inside</p>
+				</section>
+
+				<section>
+					<h1><code>[](){}</code></h1>
+				</section>
+
+				<section>
+					<p><code>[ captures ] ( params ) { body }</code></p>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+```cpp
+void abssort(float* x, unsigned n) {  
+  std::sort(x, x + n,  
+    // Lambda expression begins
+    [](float a, float b) {  
+        return (std::abs(a) < std::abs(b));  
+    } // end of lambda expression
+  );  
+}  
+```
+					</script>
+				</section>
+
+				<section>
+					<h1>What is that?</h1>
+          <p>Lambda expression constructs a closure: an unnamed function object(functor) capable of capturing variables in scope.</p>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Lambda and Functor
+
+```cpp
+void foo() {
+  int x = 1, y = 2;
+
+  auto f = [&x, &y](int c) {
+    return x + y + c;
+  }
+
+  std::cout << f(10) << std::endl; // 13
+  x += 100;
+  std::cout << f(10) << std::endl; // 113
+}
+```
+					</script>
+				</section>
+
+				<section>
+          <h2>How does it work?</h2>
+          <div class='two_columns'>
+          <div>
+<pre><code class="c++">auto f = [&x, &y](int c) {
+  return x + y + c;
+}
+</code></pre>
+          </div>
+          <div>
+<pre><code class="c++">class ClosureType {
+public:
+  ClosureType(int& x, int& y)
+      : x_{x}, y_{y} {}
+  int operator()(int c) const {
+    return x_ + y_ + c;
+  }
+private:
+  int& x_;
+  int& y_;
+} f{x, y};
+</code></pre>
+          </div>
+          </div>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## `ClosureType` is not real
+
+- Just conceptually same
+- The closure object(functor) is unnamed
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+### Every `ClosureType` is different
+
+```cpp
+bool foo() {
+  auto fn1 = [](int a, int b) { return a + b; };
+  auto fn2 = [](int a, int b) { return a + b; };
+
+  return typeid(fn1) == typeid(fn2);
+}
+```
+
+Returns `false`
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Capture by value
+
+```cpp
+void foo() {
+  int x = 1, y = 2;
+
+  auto f = [x, y](int c) {
+    return x + y + c;
+  };
+
+  std::cout << f(10) << std::endl; // 13
+  x += 100;
+  std::cout << f(10) << std::endl; // 13
+}
+```
+					</script>
+				</section>
+
+				<section>
+          <h2>How is so?</h2>
+          <div class='two_columns'>
+          <div>
+<pre><code class="c++">auto f = [x, y](int c) {
+  return x + y + c;
+}
+</code></pre>
+          </div>
+          <div>
+<pre><code class="c++">class ClosureType {
+public:
+  ClosureType(int x, int y)
+      : x_{x}, y_{y} {}
+  int operator()(int c) const {
+    return x_ + y_ + c;
+  }
+private:
+  int x_;
+  int y_;
+} f{x, y};
+</code></pre>
+          </div>
+          </div>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Capture syntax
+
+- `[&]` : all as REF
+- `[=]` : all as VAL
+- `[x, y]` : `x` and `y` as VAL
+- `[&x, &y]` : `x` and `y` as REF
+
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Capture syntax
+
+- `[x, &y]` : `x` as VAL, `y` as REF
+- `[=, &x]` : `x` as REF, the others as VAL
+- `[&, x]` : `x` as VAL, the others as REF
+
+					</script>
+				</section>
+				<section data-markdown>
+					<script type="text/template">
+## Capture syntax errors
+
+- `[&, &x]` : by-ref capture when by-ref is the default (warning)
+- `[x, &]` : default capture is not the first
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Capture-less lambda
+
+```cpp
+auto func_lambda =
+    [](int a, int b) { return a < b; };
+
+bool (*func_ptr)(int, int) = func_lambda;
+```
+
+A capture-less lambda can be converted to a function pointer. (cast-operator overloaded)
+					</script>
+				</section>
+
+				<section>
+          <h2>Mutable lambda</h2>
+          <ul>
+            <li>The <code>operator()</code> is const by default</li>
+            <li>If <code>mutable</code> keyword specified, it becomes non-const</code></li>
+            <li>Which means that we can write value-type captures</li>
+          </ul>
+				</section>
+
+				<section>
+          <h2>Mutable lambda</h2>
+          <div class='two_columns'>
+          <div>
+<pre><code class="c++">auto f = [x, y](int c) {
+  x++; // compile error
+  return x + y + c;
+}
+</code></pre>
+
+<pre><code class="c++">auto f = [x, y](int c) mutable {
+  x++; // OK
+  return x + y + c;
+}
+</code></pre>
+          </div>
+          <div>
+<pre><code class="c++">class ClosureType {
+public:
+  ClosureType(int x, int y)
+      : x_{x}, y_{y} {}
+  int operator()(int c) {
+    x_++;
+    return x_ + y_ + c;
+  }
+private:
+  int x_;
+  int y_;
+} f{x, y};
+</code></pre>
+          </div>
+          </div>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## lambda and `std::function`
+
+- They are DIFFERENT
+- `std::function` is a general-purpose polymorphic function wrapper
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+### Initialize `std::function` with lambda expression
+
+```cpp
+std::function<bool(int, int)> func_object =
+    [](int a, int b) { return a < b; };
+
+// Above will call the constructor below
+template<class F> function::function(F f); 
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Performance
+
+- Basically as effective as functors
+- lambda expression is an object, not a pointer
+- No indirection, easily inlined
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+<img src="https://i.ytimg.com/vi/vtWKlgEi9js/maxresdefault.jpg" alt="ASM" style="width:50%;" />
+
+**gcc 8.2 x86-64** with `-O2`
+
+Thanks to https://godbolt.org/
+
+					</script>
+				</section>
+
+				<section>
+          <h3>Performance : plain function</code></h3>
+          <div class='two_columns'>
+          <div>
+<pre><code class="c++">int fn (int a) {
+  return a + 3;
+}
+
+int foo(int z) {
+  return fn(z);
+}
+</code></pre>
+          </div>
+          <div>
+<pre><code class="c++">fn(int):
+  lea     eax, [rdi+3]
+  ret
+foo(int):
+  lea     eax, [rdi+3]
+  ret
+</code></pre>
+          </div>
+          </div>
+				</section>
+
+				<section>
+          <h3>Performance : <code>Functor</code></h3>
+          <div class='two_columns'>
+          <div>
+<pre><code class="c++">struct Functor {
+  int operator()(int a) {
+    return a + 3;
+  }
+} fn;
+
+int foo(int z) {
+  return fn(z);
+}
+</code></pre>
+          </div>
+          <div>
+<pre><code class="c++">foo(int):
+  lea     eax, [rdi+3]
+  ret
+</code></pre>
+          </div>
+          </div>
+				</section>
+
+				<section>
+          <h3>Performance : lambda expression</code></h3>
+          <div class='two_columns'>
+          <div>
+<pre><code class="c++">auto fn =
+  [](int a) { return a + 3; };
+
+int foo(int z) {
+  return fn(z);
+}
+</code></pre>
+          </div>
+          <div>
+<pre><code class="c++">foo(int):
+  lea     eax, [rdi+3]
+  ret
+</code></pre>
+          </div>
+          </div>
+				</section>
+
+				<section>
+          <h3>Performance : <code>std::function</code></h3>
+          <div class='two_columns'>
+          <div>
+<pre><code class="c++">std::function&lt;int(int)&gt; fn =
+  [](int a) { return a + 3; };
+
+int foo(int z) {
+  return fn(z);
+}
+</code></pre>
+          </div>
+          <div>
+<pre><code class="c++">foo(int):
+  sub     rsp, 24
+  cmp     QWORD PTR fn[rip+16], 0
+  mov     DWORD PTR [rsp+12], edi
+  je      .L13
+  lea     rsi, [rsp+12]
+  mov     edi, OFFSET FLAT:fn
+  call    [QWORD PTR fn[rip+24]]
+  add     rsp, 24
+  ret
+.L13:
+  call    std::__throw_bad_function_call()
+</code></pre>
+          </div>
+          </div>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+### Generic Lambda - since C++14
+
+```cpp
+auto fn = [](auto a, auto b) { return a + b; };
+
+auto r1 = fn(1, 2);
+auto r2 = fn(std::string("a"), std::string("b"));
+
+std::cout << r1 << std::endl; // 3
+std::cout << r2 << std::endl; // ab
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+### Generic Lambda - since C++14
+
+```cpp
+auto fn = [](auto a, auto b) { return a + b; };
+
+auto r1 = fn(1, 2);
+auto r2 = fn(std::string("a"), std::string("b"));
+
+std::cout << r1 << std::endl; // 3
+std::cout << r2 << std::endl; // ab
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## What is going on?
+
+```cpp
+auto fn = [](auto a, auto b) { return a + b; };
+```
+
+```cpp
+class ClosureType {
+public:
+  template<typename A, typename B>
+  auto operator()(A a, B b) const {
+    return a + b;
+  }
+} fn;
+```
+					</script>
+				</section>
+
+				<section>
+					<h2>Reference</h2>
+          <ul>
+          <li><a href="https://msdn.microsoft.com/en-us/library/dd293608.aspx">lambda expression - MSDN</a></li>
+          <li><a href="https://en.cppreference.com/w/cpp/language/lambda">lambda expression - cppreference</a></li>
+          <li><a href="https://en.cppreference.com/w/cpp/utility/functional/function">std::function - cppreference</a></li>
+          <li><a href="https://web.mst.edu/~nmjxv3/articles/lambdas.html">C++ Lambdas Under The Hood</a></li>
+          </ul>
+				</section>
+			</div>
+
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+
+			// More info https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+				// More info https://github.com/hakimel/reveal.js#dependencies
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/search/search.js', async: true },
+					{ src: 'plugin/zoom-js/zoom.js', async: true },
+					{ src: 'plugin/notes/notes.js', async: true }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>

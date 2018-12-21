@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>std::initializer_list</title>
+
+		<meta name="description" content="Modern C++ : std::initializer_list">
+		<meta name="author" content="Hanjoung Lee">
+
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css" id="theme">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section>
+					<h1>Modern C++</h1>
+					<p>Introduction to <code>std::initializer_list</code></p>
+				</section>
+				<section>
+					<h2><code>std::initializer_list</code>?</h2>
+          <ul>
+            <li>With a template parameter <code>std::initializer_list&lt;T&gt;</code></li>
+            <li>a lightweight proxy object that provides access to an array of objects of type <code>const T</code>.</li>
+            <li>Available since C++11</li>
+          </ul>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## constructors and methods
+
+<table>
+	<tbody>
+		<tr>
+			<td>`initializer_list()`</td>
+		</tr>
+		<tr>
+			<td>`size_t size() const`</td>
+		</tr>
+		<tr>
+      <td>`const T* begin() const`</td>
+		</tr>
+		<tr>
+      <td>`const T* end() const`</td>
+		</tr>
+	</tbody>
+</table>
+
+This is the complete list.<br />
+Note that there is no way to set elements.
+					</script>
+				</section>
+
+				<section>
+          <h2>No way to set elements?</h2>
+          <ul>
+            <li>The compiler will automatically construct a non-empty object of this class template type whenever <strong>an initializer list expression</strong> needs to be passed or copied</li>
+            <li>This is the only way to set the values of an object of type <code>initializer_list</code></li>
+          </ul>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+### Talk is cheap, show me the code
+
+```cpp
+// Declare object with curly backets
+std::initializer_list<int> l1{1, 2, 3, 4, 5};
+std::initializer_list<int> l2 = {1, 2, 3, 4, 5};
+
+// Same, but `auto` can be used
+auto l3{1, 2, 3, 4, 5};
+auto l4 = {1, 2, 3, 4, 5};
+```
+
+`auto` with braced-init-list will deduced to `std::initializer_list`.
+					</script>
+				</section>
+
+				<section>
+          <h1>So, what on earth is that?</h1>
+				</section>
+
+				<section>
+          <h2>It is a list</h2>
+          <p>As its name implies, it is a finite list of homogeneous type with sequence.</p>
+				</section>
+
+				<section>
+          <h2>Its size is fixed</h2>
+          <p>As <strong>initializer list expression</strong> is the only way to set the elements, its size is always known at compile time.</p>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## It is iterable
+
+Since `begin()` and `end()` are available.
+
+```cpp
+void foo()
+{
+  std::initializer_list<int> list = {1, 2, 3, 4, 5};
+
+  for (auto e : list)
+  {
+    std::cout << e;
+  }
+}
+```
+					</script>
+				</section>
+
+				<section>
+					<h2>It is not an array</h2>
+          <p>It does not own or manage its elements.</p>
+          <p>Cannot append/delete/insert/alter those.</p>
+				</section>
+
+				<section>
+					<h1>Under the hood by example</h1>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## `std::vector` Initialization
+
+Construction of a int vector
+<!-- .element: class="fragment" -->
+
+```cpp
+vector<int> v{1, 2, 3, 4, 5};
+```
+<!-- .element: class="fragment" -->
+
+Calls this constructor <!-- .element: class="fragment" -->
+
+```cpp
+vector(std::initializer_list<T> init,
+       const Allocator& alloc = Allocator());
+```
+<!-- .element: class="fragment" -->
+					</script>
+				</section>
+
+				<section>
+					<h2>Wait a minute...</h2>
+          <p>Why is it passed by value? Isn't it expensive?</p>
+				</section>
+
+				<section>
+					<h2>It's just OK</h2>
+          <ul>
+          <li>Copying an initializer list does not copy the underlying elements (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf">standard</a>, section 18.9)</li>
+          <li>The underlying array is not guaranteed to exist after the lifetime of the original initializer list object has ended (<a href="http://en.cppreference.com/w/cpp/utility/initializer_list">cppreference</a>)</li>
+          </ul>
+				</section>
+
+				<section>
+					<h2>Explain like I'm five</h2>
+          <ul>
+          <li>Simple implementation of <code>initializer_list</code> would be
+            <ul>
+              <li>A pair of pointers that point to first/last</li>
+              <li>A pointer and a length</li>
+            </ul>
+          <li>That is why the underlying elements' lifetime matters</li>
+          </ul>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+```cpp
+class ADT { /* ... */ };
+
+void foo()
+{
+  std::vector<ADT> v = { ADT{1}, ADT{2}, ADT{3} };
+}
+```
+
+Possible compiler implementation
+
+![Image](https://i2.wp.com/blog.feabhas.com/wp-content/uploads/2015/07/image_thumb14.png?resize=266%2C343)
+					</script>
+				</section>
+
+				<section>
+					<h2>Confusion when using braced-init-list</h2>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+
+### `initializer_list` has priority
+
+```cpp
+struct Point
+{
+  int x, y;
+  Point(int a, int b);             // [1]
+  Point(initializer_list<int> s);  // [2]
+};
+
+void foo()
+{                     // Resolution order
+  Point p1(1, 1);     // [1]
+  Point p2({1, 1});   // [2], [1]
+  Point p3{1, 1};     // [2], [1]
+  Point p4 = {1, 1};  // [2], [1]
+}
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Even this case
+
+```cpp
+struct Widget
+{
+  Widget(int i, bool b);                          // [1]
+  Widget(std::initializer_list<long double> il);  // [2]
+};
+                      // Resolution
+Widget w1(10, true);  // [1]
+Widget w2{10, true};  // [2] as int/bool can be converted
+                      //     into double (widening)
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Even this case 2
+
+```cpp
+struct Widget
+{
+  Widget(int i, bool b);                          // [1]
+  Widget(std::initializer_list<long double> il);  // [2]
+        
+  operator float () const;  // user-defined conversion
+};
+ 
+Widget w3(w2);             // Calls copy constructor
+Widget w4{w2};             // Calls [2]
+Widget w5(std::move(w4));  // Calls move constructor
+Widget w6{std::move(w3)};  // Calls [2]
+```
+
+For the case of `w4`, conversion for `w2` is:<br />
+`Widget` -> `float` -> `long double`.
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Even this case 3
+
+```cpp
+struct Widget
+{
+  Widget(int i, double d);                 // [1]
+  Widget(std::initializer_list<bool> il);  // [2]
+};
+ 
+Widget w7{10, 5.0};  // Error, requires narrowing conversion
+```
+
+Unlike widening conversion, narrowing conversion is not allowed for uniform initialization.
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## `std::vector` Initialization
+
+BRACES vs PARENS
+
+```cpp
+std::vector<int> v1(3, 5);
+std::vector<int> v2{3, 5};
+```
+
+Which constructor is called for each? <!-- .element: class="fragment" -->
+
+```cpp
+vector(size_type count, const int& value); // v1
+vector(std::initializer_list<int> init);   // v2
+```
+<!-- .element: class="fragment" -->
+
+<small>NOTE Trailing argument Allocator is ommited.</small> <!-- .element: class="fragment" -->
+					</script>
+				</section>
+
+				<section>
+					<h2>Reference</h2>
+          <ul>
+          <li><a href="http://cpp11surprises.blogspot.com/2014/08/stdinitializerlist.html">cpp11surprises.blogspot.com</a></li>
+          <li><a href="https://blog.feabhas.com/2015/08/bitesize-modern-c-stdinitializer_list">blog.feabhas.com</a></li>
+          <li><a href="http://narss.tistory.com/entry/5%EC%9D%BC%EC%B0%A8-initializerlist">narss.tistory.com</a></li>
+          <li>Item 7 from "Effective Modern C++" by Scott Meyers</li>
+          </ul>
+				</section>
+
+			</div>
+
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+
+			// More info https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+				// More info https://github.com/hakimel/reveal.js#dependencies
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/search/search.js', async: true },
+					{ src: 'plugin/zoom-js/zoom.js', async: true },
+					{ src: 'plugin/notes/notes.js', async: true }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>

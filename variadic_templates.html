@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Variadic Templates</title>
+
+		<meta name="description" content="Modern C++ : Variadic templates">
+		<meta name="author" content="Hanjoung Lee">
+
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css" id="theme">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+
+    <style>
+    .two_columns {
+   display: grid;
+   grid-template-columns: 1fr 1fr;
+   grid-gap: 10px;
+   text-align: left;
+}
+    </style>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section>
+					<h1>Modern C++</h1>
+					<p>Variadic Templates Basics</p>
+				</section>
+
+				<section>
+					<h2>Why on earth we need that?</h2>
+          <p>Makes template metaprogramming stronger (IMHO)</p>
+				</section>
+
+				<section>
+					<h1>Parameter Pack</h1>
+          <ul>
+            <li>Template parameter pack
+              <ul>
+                <li>A template parameter that accepts zero or more template arguments (non-types, types, or templates)</li>
+              </ul>
+            </li>
+            <li>Function parameter pack
+              <ul>
+                <li>a function parameter that accepts zero or more function arguments</li>
+              </ul>
+            </li>
+          </ul>
+				</section>
+
+				<section>
+					<h1>Variadic Template</h1>
+          <p>A template with at least one <strong>parameter pack</strong> is called a variadic template.</p>
+				</section>
+
+				<section>
+					<h2>Variadic Template with function parameter pack</h2>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+```cpp
+// Base Case
+template<typename T>
+T adder(T v) {
+  return v;
+}
+
+// Variadic Case
+template<typename T, typename... Args>
+T adder(T first, Args... args) {
+  return first + adder(args...);
+}
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## `adder` usage
+
+```cpp
+long sum = adder(1, 2, 3, 8, 7);
+// sum == 21
+
+std::string s1 = "x", s2 = "aa",
+            s3 = "bb", s4 = "yy";
+std::string ssum = adder(s1, s2, s3, s4);
+// ssum == "xaabbyy"
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+### Adding `__PRETTY_FUNCTION__`
+
+```cpp
+// Base Case
+template<typename T>
+T adder(T v) {
+  std::cout << __PRETTY_FUNCTION__ << "\n"; // ADDED
+  return v;
+}
+
+// Variadic Case
+template<typename T, typename... Args>
+T adder(T first, Args... args) {
+  std::cout << __PRETTY_FUNCTION__ << "\n"; // ADDED
+  return first + adder(args...);
+}
+```
+
+NOTE This is a gcc extension.
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+### Run `adder(1, 2, 3, 8, 7)`
+
+```bash
+T adder(T, Args...) [T = int, Args = <int, int, int, int>]
+T adder(T, Args...) [T = int, Args = <int, int, int>]
+T adder(T, Args...) [T = int, Args = <int, int>]
+T adder(T, Args...) [T = int, Args = <int>]
+T adder(T) [T = int]
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Pack Expansion
+
+What if there is no base case of `adder`?
+
+```bash
+z.cc:7:18: error: no matching function for call to 'adder'
+  return first + adder(args...);
+                 ^~~~~
+z.cc:7:18: note: in instantiation of function template specialization 'adder<int>' requested here
+z.cc:7:18: note: in instantiation of function template specialization 'adder<int, int>' requested here
+z.cc:7:18: note: in instantiation of function template specialization 'adder<int, int, int>' requested here
+z.cc:7:18: note: in instantiation of function template specialization 'adder<int, int, int, int>' requested here
+z.cc:11:14: note: in instantiation of function template specialization 'adder<int, int, int, int, int>' requested here
+  long sum = adder(1, 2, 3, 8, 7);
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Pack Expansion
+
+```
+Use            Expansion
+
+Ts...          T1, ..., Tn
+Ts&&...        T1&&, ..., Tn&&
+x<Ts,Y>::z...  x<T1,Y>::z, ..., x<Tn,Y>::z
+x<Ts&,Us>...   x<T1&,U1>, ..., x<Tn&,Un>
+func(5,vs)...  func(5,v1), ..., func(5,vn)
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+
+## Real world example
+
+Implementation of `std::make_shared` (libstdc)
+
+```cpp
+template<typename _Tp, typename... _Args>
+inline shared_ptr<_Tp>
+make_shared(_Args&&... __args)
+{
+  typedef typename std::remove_cv<_Tp>::type _Tp_nc;
+  return std::allocate_shared<_Tp>(std::allocator<_Tp_nc>(),
+         std::forward<_Args>(__args)...);
+}
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+
+## Real world example
+
+Implementation of `std::vector::emplace_back` (libstdc)
+
+```cpp
+vector<_Tp, _Alloc>::emplace_back(_Args&&... __args)
+{
+  if (this->_M_impl._M_finish != this->_M_impl._M_end_of_storage)
+  {
+    _GLIBCXX_ASAN_ANNOTATE_GROW(1);
+    _Alloc_traits::construct(this->_M_impl, this->_M_impl._M_finish,
+       std::forward<_Args>(__args)...);
+    ++this->_M_impl._M_finish;
+    _GLIBCXX_ASAN_ANNOTATE_GREW(1);
+  }
+  else
+    _M_realloc_insert(end(), std::forward<_Args>(__args)...);
+}
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+
+## Real "real world example"
+
+[**luab** module in mengde](https://github.com/wateret/mengde/blob/master/game/src/luab/lua.h#L108-L123)
+					</script>
+				</section>
+
+				<section>
+					<h2>Variadic Template with template parameter pack</h2>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Variadic data structure
+
+[cppreference - std::tuple](https://en.cppreference.com/w/cpp/utility/tuple)
+
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+```cpp
+template<typename... _Elements>
+  class tuple;
+
+...
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Simple version of `tuple`
+
+https://stackoverflow.com/a/52208842/2683320
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Define `TupleLeaf`
+
+```cpp
+// Contains the actual value for one item in the tuple. The
+// template parameter `i` allows the
+// `Get` function to find the value in O(1) time
+template<std::size_t i, typename Item>
+struct TupleLeaf {
+    Item value;
+};
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Define `TupleImpl`
+
+```cpp
+// TupleImpl is a proxy for the final class that has an extra
+// template parameter `i`.
+template<std::size_t i, typename... Items>
+struct TupleImpl;
+
+// Base case: empty tuple
+template<std::size_t i>
+struct TupleImpl<i>{};
+
+// Recursive specialization
+template<std::size_t i, typename HeadItem, typename... TailItems>
+struct TupleImpl<i, HeadItem, TailItems...> :
+    public TupleLeaf<i, HeadItem>, // This adds a `value` member of type HeadItem
+    public TupleImpl<i + 1, TailItems...> // This recurses
+    {};
+}
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Define `Get`
+
+```cpp
+// Obtain a reference to i-th item in a tuple
+template<std::size_t i, typename HeadItem, typename... TailItems>
+HeadItem& Get(TupleImpl<i, HeadItem, TailItems...>& tuple) {
+    // Fully qualified name for the member, to find the right one
+    // (they are all called `value`).
+    return tuple.TupleLeaf<i, HeadItem>::value;
+}
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Define alias `Tuple`
+
+```cpp
+// Templated alias to avoid having to specify `i = 0`
+template<typename... Items>
+using Tuple = TupleImpl<0, Items...>;
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Usage
+
+```cpp
+int main() {
+  Tuple<int, float, std::string> tuple;
+  Get<0>(tuple) = 5;
+  Get<1>(tuple) = 8.3;
+  Get<2>(tuple) = "Foo";
+  std::cout << Get<0>(tuple) << std::endl;
+  std::cout << Get<1>(tuple) << std::endl;
+  std::cout << Get<2>(tuple) << std::endl;
+  return 0;
+}
+```
+					</script>
+				</section>
+
+				<section>
+					<h1>Extra</h1>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Operator `sizeof...`
+
+```cpp
+template <class... Ts>
+void printCount(Ts... args) {
+  std::cout
+    << sizeof...(Ts) << ' '
+    << sizeof...(args);
+}
+
+// prints "3 3"
+printCount(22, std::optional{0}, "!");
+```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+## Fold Expressions (C++17)
+
+```cpp
+template <class... Args>
+bool containsZero(Args const&... args) {
+  return ((args == 0) || ...);
+}
+```
+
+The return expression is equivalant to
+
+```cpp
+((args1 == 0) || (args2 == 0) || ... || (argsN == 0))
+```
+					</script>
+				</section>
+
+				<section>
+					<h2>Reference</h2>
+          <ul>
+            <li><a href="https://eli.thegreenplace.net/2014/variadic-templates-in-c/">Eli Bendersky's website</a></li>
+            <li><a href="https://en.cppreference.com/w/cpp/language/parameter_pack">Parameter Pack</a></li>
+            <li><a href="http://mitchnull.blogspot.com/2012/06/c11-tuple-implementation-details-part-1.html">mitchnull</a></li>
+            <li><a href="https://arne-mertz.de/2016/11/more-variadic-templates/">Simplify C++</a></li>
+          </ul>
+				</section>
+			</div>
+
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+
+			// More info https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+				// More info https://github.com/hakimel/reveal.js#dependencies
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/search/search.js', async: true },
+					{ src: 'plugin/zoom-js/zoom.js', async: true },
+					{ src: 'plugin/notes/notes.js', async: true }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
